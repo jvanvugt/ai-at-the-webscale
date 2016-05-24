@@ -75,6 +75,8 @@ class ContextlessThompsonModel(object):
     def pick_price(self, start_index, end_index):
         successes = self.successes[start_index:end_index]
         probs = [np.random.beta(s + 1, self.n - s + 1) for s in successes]
+
+        # Compute the expected values
         scaled_probs = np.array(probs) * self.prices
         action = np.zeros(len(probs))
         action[np.argmax(scaled_probs)] = 1
@@ -90,6 +92,7 @@ class ContextualThompsonModel(object):
         self.beta = beta
 
     def propose(self, context):
+        # Disregard age and visitor_id
         context = context[2:]
         i = 0
         header = self.pick_action(i, i + len(HEADER), context)
@@ -107,6 +110,7 @@ class ContextualThompsonModel(object):
 
 
     def update(self, context, action, success):
+        # Disregard age and visitor_id
         context = context[2:]
         self.n += self.beta
         if success:
@@ -116,26 +120,44 @@ class ContextualThompsonModel(object):
             action = np.concatenate((action[:-1], prices))
             for a, c in itertools.product(np.flatnonzero(action), np.flatnonzero(context)):
                 self.successes[a, c] += self.alpha
-        if self.n == 5000:
-            print 'context:'
-            print context
-            print '\naction:'
-            print action
-            print '\nsuccesses'
-            print self.successes
 
     def pick_action(self, start_index, end_index, context):
-        successes = [self.successes[a, c] for a, c in zip(xrange(start_index, end_index), np.flatnonzero(context))]
+        """
+        Pick an action according to the beta distribution
+
+        - start_index: The first index of a specific action
+                       in the action vector
+        - end_index: The first element of the next action
+
+        - context: The encoded context
+        """
+        action_indices = xrange(start_index, end_index)
+        context_indices = np.flatnonzero(context)
+
+        # Find the number of successes per action possibility
+        # and context
+        successes = [self.successes[a, c] for a, c in itertools.product(action_indices, context_indices)]
         probs = [np.random.beta(s + 1, self.n - s + 1) for s in successes]
         action = np.zeros(end_index - start_index)
-        action[np.argmax(probs) % len(action)] = 1
+
+        # Use integer division instead of modulo because itertools.product
+        # iterates over the last element first
+        action[np.argmax(probs) / len(context_indices)] = 1
         return action
 
     def pick_price(self, start_index, end_index, context):
+        """
+        Very similar to pick_action, but scales the probabilities by
+        the price, so we choose a price based on the expected value
+        """
         n_options = end_index - start_index
-        successes = [self.successes[a, c] for a, c in itertools.product(xrange(start_index, end_index), np.flatnonzero(context))]
+        action_indices = xrange(start_index, end_index)
+        context_indices = np.flatnonzero(context)
+        successes = [self.successes[a, c] for a, c in itertools.product(action_indices, context_indices)]
         probs = np.array([np.random.beta(s + 1, self.n - s + 1) for s in successes])
+
+        # Compute the expected values
         scaled_probs = (probs.reshape(n_options, -1) * self.prices.reshape(-1, 1)).reshape(len(successes))
         action = np.zeros(n_options)
-        action[np.argmax(scaled_probs) % len(action)] = 1
+        action[np.argmax(scaled_probs) / len(context_indices)] = 1
         return action

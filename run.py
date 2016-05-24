@@ -22,7 +22,7 @@ def run_single_id(run_id, show_progress=True):
     print 'starting run_id: ', run_id
     reward = 0
     successes = 0
-    model = ContextualThompsonModel(alpha=0.1, beta=0.1)
+    model = ContextualThompsonModel(alpha=.01, beta=.01)
     # mean_reward = np.zeros(REQUEST_NUMBERS / 100)
     for rn in range_func(REQUEST_NUMBERS):
         # if rn % 100 == 0:
