@@ -3,7 +3,6 @@ from __future__ import division
 import sys
 
 from threading import Thread
-from multiprocessing import Process
 
 import numpy as np
 from tqdm import *
