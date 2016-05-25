@@ -25,6 +25,33 @@ class ConstantModel(object):
     def update(self, context, action, success):
         pass
 
+class EnsembleModel(object):
+
+    def __init__(self, model, n, **kwargs):
+        self.models = [model(**kwargs) for _ in xrange(n)]
+
+    def propose(self, context):
+        actions = np.sum([model.propose(context) for model in self.models], axis=0)
+        action = np.zeros(ACTION_VECTOR_LENGTH)
+        i = 0
+        header_action_idx = np.argmax(actions[i:i + len(HEADER)]) + i
+        action[header_action_idx] = 1
+        i += len(HEADER)
+        adtype_action_idx = np.argmax(actions[i:i + len(ADTYPE)]) + i
+        action[adtype_action_idx] = 1
+        i += len(ADTYPE)
+        color_action_idx = np.argmax(actions[i:i + len(COLOR)]) + i
+        action[color_action_idx] = 1
+        i += len(COLOR)
+        language_action_idx = np.argmax(actions[i:i + len(LANGUAGE_ACT)]) + i
+        action[language_action_idx] = 1
+        i += len(LANGUAGE_ACT)
+        action[i] = actions[-1] // len(self.models)
+        return action
+
+    def update(self, context, action, success):
+        for model in self.models:
+            model.update(context, action, success)
 
 class ContextlessThompsonModel(object):
 

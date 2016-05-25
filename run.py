@@ -22,7 +22,8 @@ def run_single_id(run_id, show_progress=True):
     print 'starting run_id: ', run_id
     reward = 0
     successes = 0
-    model = ContextualThompsonModel(alpha=.1, beta=.1)
+    model = EnsembleModel(ContextlessThompsonModel,
+        10, alpha=.01, beta=.01)
     # mean_reward = np.zeros(REQUEST_NUMBERS / 100)
     for rn in range_func(REQUEST_NUMBERS):
         # if rn % 100 == 0:
