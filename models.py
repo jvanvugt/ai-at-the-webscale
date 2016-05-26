@@ -188,3 +188,16 @@ class ContextualThompsonModel(object):
         action = np.zeros(n_options)
         action[np.argmax(scaled_probs) / len(context_indices)] = 1
         return action
+
+class BootstrapModel(object):
+
+    def __init__(self, model=ContextualThompsonModel, n=10, **kwargs):
+        self.models = [model(**kwargs) for _ in range(n)]
+
+    def propose(self, context):
+        return np.random.choice(self.models).propose(context)
+
+    def update(self, context, action, success):
+        for model in self.models:
+            if np.random.rand(1) > 0.5:
+                model.update(context, action, success)
