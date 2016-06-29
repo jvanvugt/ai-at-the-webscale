@@ -168,7 +168,7 @@ class ContextualThompsonModel(object):
         action = np.zeros(end_index - start_index)
 
         # Use integer division instead of modulo because itertools.product
-        # iterates over the last element first
+        # iterates over the last argument first
         action[np.argmax(probs) / len(context_indices)] = 1
         return action
 
