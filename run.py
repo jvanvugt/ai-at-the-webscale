@@ -22,8 +22,8 @@ def run_single_id(run_id, show_progress=True):
     print 'starting run_id: ', run_id
     reward = 0
     successes = 0
-    model = BootstrapModel(ContextualThompsonModel,
-        100, alpha=1, beta=0.9)
+    model = BootstrapModel(InteractionContextlessThompsonModel,
+        100, alpha=0.1, beta=0.1)
     # mean_reward = np.zeros(REQUEST_NUMBERS / 100)
     for rn in range_func(REQUEST_NUMBERS):
         # if rn % 100 == 0:
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     elif '--rid' in sys.argv:
         run(int(sys.argv[sys.argv.index('--rid') + 1]))
     elif '--train' in sys.argv:
-        mean_reward = np.mean([run(id) for id in xrange(100, 120)])
+        mean_reward = np.mean([run(id) for id in xrange(100, 110)])
         print 'mean reward over 20 runs: ', mean_reward
     else:
         run()

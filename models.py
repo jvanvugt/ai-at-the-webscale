@@ -5,7 +5,9 @@ import numpy as np
 from encoding import *
 
 class RandomModel(object):
-
+    """
+    Picks an action at random
+    """
     def propose(self, context):
         action = np.zeros(ACTION_VECTOR_LENGTH)
         action[-1] = np.random.normal(15, 5)
@@ -15,7 +17,9 @@ class RandomModel(object):
         pass
 
 class ConstantModel(object):
-
+    """
+    Always picks the aciton provided in the constructor
+    """
     def __init__(self, action):
         self.action = action
 
@@ -26,8 +30,16 @@ class ConstantModel(object):
         pass
 
 class EnsembleModel(object):
-
+    """
+    An ensemble of models.
+    Picks the action with the that's chosen by most models 
+    """
     def __init__(self, model, n, **kwargs):
+        """
+        model: class of the model that should be used
+        n: number of models in the ensemble
+        kwargs: arguments passed to the constructor of model
+        """
         self.models = [model(**kwargs) for _ in xrange(n)]
 
     def propose(self, context):
@@ -54,7 +66,13 @@ class EnsembleModel(object):
             model.update(context, action, success)
 
 class ContextlessThompsonModel(object):
+    """
+    Thompson sampling (sampling from a beta distribution) that does not keep
+    the context account in any way.
 
+    This version does not have any arms for the interaction between the elements of the action
+    Thus, it assumes no interaction between the actions
+    """
     def __init__(self, alpha=1., beta=1.):
         self.prices = np.arange(5., 50., 5.)
         self.successes = np.zeros(ACTION_VECTOR_LENGTH - 1 + len(self.prices))
@@ -109,7 +127,57 @@ class ContextlessThompsonModel(object):
         action[np.argmax(scaled_probs)] = 1
         return action
 
+class InteractionContextlessThompsonModel(object):
+    """
+    Thompson sampling with arms for the interaction between arms.
+    Does not take context into account.
+    """
+    def __init__(self, alpha=1., beta=1.):
+        self.prices = np.arange(5., 50., 5.)
+        self.n = 0
+        self.successes = np.zeros(len(HEADER) * len(ADTYPE) * len(COLOR) * len(LANGUAGE_ACT))
+        self.price_successes = np.zeros(len(self.prices))
+        self.alpha = alpha
+        self.beta = beta
+        self.actions = list(itertools.product(HEADER, ADTYPE, COLOR, LANGUAGE_ACT))
+    
+    def propose(self, context):
+        probs = [np.random.beta(s + 1, self.n - s + 1) for s in self.successes]
+        action_index = np.argmax(probs)
+        action_names = self.actions[action_index]
+        action = np.zeros(ACTION_VECTOR_LENGTH)
+        i = 0
+        action[i + HEADER.index(action_names[0])] = 1
+        i += len(HEADER)
+        action[i + ADTYPE.index(action_names[1])] = 1
+        i += len(ADTYPE)
+        action[i + COLOR.index(action_names[2])] = 1
+        i += len(COLOR)
+        action[i + LANGUAGE_ACT.index(action_names[3])] = 1
+        i += len(LANGUAGE_ACT)
+        price_probs = [np.random.beta(s + 1, self.n - s + 1) for s in self.price_successes]
+        # Compute the expected value
+        price_probs *= self.prices
+        action[i] = self.prices[np.argmax(price_probs)] 
+        return action
+    
+    def update(self, context, action, success):
+        self.n += self.beta
+        if success:
+            action = decode_action(action)
+            action_names = (action['header'], action['adtype'], action['color'], action['language'])
+            action_index = self.actions.index(action_names)
+            self.successes[action_index] += self.alpha
+            self.price_successes[self.prices == action['price']] += self.alpha
+
+
+
 class ContextualThompsonModel(object):
+    """
+    Thompson sampling without arms for interaction between actions.
+    Does have arms for interaction with context.
+    Does not take interaction between context into account
+    """
     def __init__(self, alpha=1., beta=1.):
         self.prices = np.arange(5., 50., 5.)
         self.n = 0
@@ -190,7 +258,9 @@ class ContextualThompsonModel(object):
         return action
 
 class BootstrapModel(object):
-
+    """
+    Implementation of Bootstrap (Thompson) sampling: https://arxiv.org/abs/1410.4009
+    """
     def __init__(self, model=ContextualThompsonModel, n=10, **kwargs):
         self.models = [model(**kwargs) for _ in range(n)]
 
