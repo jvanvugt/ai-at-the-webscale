@@ -27,6 +27,8 @@ def get_contexts(run_id):
         df.to_pickle(file_path)
         return df
 
+
+
 def plot_context_distributions(run_id):
     context = get_contexts(run_id)
     subplots = plt.subplots(2, 2)[1].ravel()
@@ -70,9 +72,9 @@ def test_actions():
         'color': 'red',
         'price': 30.
     }
-    df = test_all_options(1, 'color', action)
-    df.color[df.success != 0.].value_counts().plot.bar()
-    print df.color.head()
+    df = test_all_options(1, 'language_act', action, action_name='language')
+    df.language[df.success != 0.].value_counts().plot.bar()
+    print df.language.head()
     print df.success.sum()
     plt.show()
 
@@ -88,7 +90,7 @@ def test_speed():
 
 def run():
     test_actions()
-    # plot_context_distributions(6)
+    # plot_context_distributions(500)
     # test_speed()
 
 

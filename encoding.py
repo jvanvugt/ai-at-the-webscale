@@ -7,7 +7,7 @@ REFERRER = ['Google', 'Bing', 'Other']
 
 HEADER = [5, 15, 35]
 ADTYPE = ['skyscraper', 'square', 'banner']
-COLOR = ['green', 'blue', 'red', 'black', 'white']
+COLOR = ['green', 'blue', 'red', 'white'] # black never works
 LANGUAGE_ACT = ['NL', 'EN', 'GE']
 
 PRICE_MIN = 0.01
