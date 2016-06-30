@@ -58,6 +58,9 @@ def validate():
 if __name__ == '__main__':
     if '--validate' in sys.argv:
         validate()
+    elif '--test' in sys.argv:
+        mean_reward = np.mean([run(id) for id in xrange(10000, 10010)])
+        print 'mean reward over 10 runs: ', mean_reward
     elif '--rid' in sys.argv:
         run(int(sys.argv[sys.argv.index('--rid') + 1]))
     elif '--train' in sys.argv:
