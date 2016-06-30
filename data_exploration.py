@@ -7,6 +7,7 @@ plt.style.use('ggplot')
 from tqdm import *
 
 from encoding import *
+from models import *
 from aiws import api
 from login_info import USERNAME, PASSWORD
 api.authenticate(USERNAME, PASSWORD)
@@ -69,16 +70,26 @@ def test_actions():
         'color': 'red',
         'price': 30.
     }
-    df = test_all_options(0, 'header', action)
-    df.header[df.success != 0.].value_counts().plot.bar()
+    df = test_all_options(1, 'color', action)
+    df.color[df.success != 0.].value_counts().plot.bar()
+    print df.color.head()
     print df.success.sum()
     plt.show()
 
+def test_speed():
+    contexts = get_contexts(0).to_dict('records')
+    model = BootstrapModel(ContextlessThompsonModel,
+        100, alpha=0.1, beta=0.1)
+    for context in tqdm(contexts):
+        context = encode_context(context)
+        action = model.propose(context)
+        model.update(context, action, True)
 
 
 def run():
     test_actions()
     # plot_context_distributions(6)
+    # test_speed()
 
 
 if __name__ == '__main__':

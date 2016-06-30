@@ -93,6 +93,10 @@ class ContextlessThompsonModel(object):
         #     adtype = np.array([1, 0, 0])
         i += len(ADTYPE)
         color = self.pick_action(i, i + len(COLOR))
+        if color[3] == 1:
+            best_so_far = np.argmax(self.successes[6:11])
+            color = np.zeros(len(COLOR))
+            color[best_so_far] = 1
         i += len(COLOR)
         language = self.pick_action(i, i + len(LANGUAGE_ACT))
         i += len(LANGUAGE_ACT)
@@ -181,14 +185,14 @@ class ContextualThompsonModel(object):
     def __init__(self, alpha=1., beta=1.):
         self.prices = np.arange(5., 50., 5.)
         self.n = 0
-        context_length = len(AGENT) + len(OS) + len(LANGUAGE_CTX) + len(REFERRER)
+        context_length = len(AGENT) + len(LANGUAGE_CTX)
         self.successes = np.zeros((ACTION_VECTOR_LENGTH - 1 + len(self.prices), context_length))
         self.alpha = alpha
         self.beta = beta
 
     def propose(self, context):
         # Disregard age and visitor_id
-        context = context[2:]
+        context = np.hstack((context[2:7], context[12:16]))
         i = 0
         header = self.pick_action(i, i + len(HEADER), context)
         i += len(HEADER)
@@ -206,7 +210,7 @@ class ContextualThompsonModel(object):
 
     def update(self, context, action, success):
         # Disregard age and visitor_id
-        context = context[2:]
+        context = np.hstack((context[2:7], context[12:16]))
         self.n += self.beta
         if success:
             price_idx = np.where(self.prices == action[-1])
@@ -256,6 +260,64 @@ class ContextualThompsonModel(object):
         action = np.zeros(n_options)
         action[np.argmax(scaled_probs) / len(context_indices)] = 1
         return action
+
+class InteractionContextualThompsonModel(object):
+    """
+    Thompson sampling
+    Does have arms for interaction with context.
+    Does not take interaction between context into account
+    """
+    def __init__(self, alpha=1., beta=1.):
+        self.prices = np.arange(5., 50., 5.)
+        self.n = 0
+        context_length = len(AGENT) + len(OS) + len(LANGUAGE_CTX) + len(REFERRER)
+        self.successes = np.zeros((context_length, len(HEADER) * len(ADTYPE) * len(COLOR) * len(LANGUAGE_ACT) * len(self.prices)))
+        self.alpha = alpha
+        self.beta = beta
+        self.actions = list(itertools.product(HEADER, ADTYPE, COLOR, LANGUAGE_ACT, self.prices))
+
+    def propose(self, context):
+        # Disregard age and visitor_id
+        context = context[2:]
+        action = np.zeros(ACTION_VECTOR_LENGTH)
+
+        context = np.flatnonzero(context)
+        actions = [self.max_action(c) for c in context]
+        action_index = max(actions, key=lambda x: x[1])[0]
+        action_names = self.actions[action_index]
+        i = 0
+        action[i + HEADER.index(action_names[0])] = 1
+        i += len(HEADER)
+        action[i + ADTYPE.index(action_names[1])] = 1
+        i += len(ADTYPE)
+        action[i + COLOR.index(action_names[2])] = 1
+        i += len(COLOR)
+        action[i + LANGUAGE_ACT.index(action_names[3])] = 1
+        i += len(LANGUAGE_ACT)
+        action[i] = action_names[4]
+        return action
+    
+    def max_action(self, context_idx):
+        action_probs = np.array([np.random.beta(s + 1, self.n + 1 - s) for s in self.successes[context_idx, :]])
+        for i, action in enumerate(self.actions):
+            action_probs[i] = action_probs[i] * action[4]
+        action_idx, value = np.argmax(action_probs), np.max(action_probs)
+        return action_idx, value
+
+
+    def update(self, context, action, success):
+        # Disregard age and visitor_id
+        context = context[2:]
+        self.n += self.beta
+        if success:
+            context = np.flatnonzero(context)
+            action = decode_action(action)
+            action_names = (action['header'], action['adtype'], action['color'], action['language'], action['price'])
+            action_index = self.actions.index(action_names)
+            for c in context:
+                self.successes[c, action_index] += self.alpha
+
+
 
 class BootstrapModel(object):
     """
